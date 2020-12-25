@@ -16,7 +16,7 @@ class Relc:
         self.loc = -1
         self.seg_idx = -1
 
-        #### [-3,-1], means this symbol is a plain relocation item, and 0 means for the first seg
+        #### [-3,-1], means this symbol is a plain relocation item, -1 refers to the 1st segment, e.t.c.,
         ####, [1,num_sym_entries] means this is a symbol and refers to the symbol table
         self.ref = -0x7fff
         self.type = ''
@@ -53,8 +53,8 @@ def read(obj_filename):
             seg = Seg()
             seg_seps = lines[cur].strip().split(" ")
             seg.name       = seg_seps[0]
-            seg.start_addr = int(seg_seps[1])
-            seg.len        = int(seg_seps[2])
+            seg.start_addr = int(seg_seps[1],16)
+            seg.len        = int(seg_seps[2],16)
             seg.desc       = seg_seps[3]
             obj.segs.append(seg)
             cur += 1
@@ -64,8 +64,8 @@ def read(obj_filename):
             sym = Sym()
             sym_seps = lines[cur].strip().split(" ")
             sym.name    = sym_seps[0]
-            sym.val     = int(seg_seps[1])
-            sym.seg_idx = int(seg_seps[2])
+            sym.val     = int(seg_seps[1],16)
+            sym.seg_idx = int(seg_seps[2],16)
             sym.type    = sym_seps[3]
             obj.sym_tbl.append(sym)
             cur += 1
@@ -74,9 +74,9 @@ def read(obj_filename):
         for _ in range(obj.nrels):
             relc = Relc()
             relc_seps = lines[cur].strip().split(" ")
-            relc.loc     = int(relc_seps[0])
-            relc.seg_idx = int(relc_seps[1])
-            relc.ref     = int(relc_seps[2])
+            relc.loc     = int(relc_seps[0],16)
+            relc.seg_idx = int(relc_seps[1],16)
+            relc.ref     = int(relc_seps[2],16)
             relc.type    = relc_seps[3]
             obj.relc_tbl.append(relc)
             cur += 1
