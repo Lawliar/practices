@@ -82,8 +82,8 @@ def read(obj_filename):
             cur += 1
         
         ## now data
-        for  seg_idx in range(obj.nseg):
-            obj.data.append((obj.segs[seg_idx].name,lines[cur].strip() ))
+        for  _ in range(obj.nseg):
+            obj.data.append(lines[cur].strip())
             cur += 1
     
     return obj
@@ -108,4 +108,4 @@ def write(obj, write_name):
             wfile.write("{} {} {} {}\n".format(hex(relc.loc),relc.seg_idx, relc.ref,relc.type))
         
         for seg_idx in range(obj.nseg):
-            wfile.write("{}\n".format(obj.data[1]))
+            wfile.write("{}\n".format(obj.data[seg_idx]))
