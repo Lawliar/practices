@@ -32,7 +32,6 @@ if __name__ == "__main__":
 
     ## pre-defined segments
                 ## segments names, start addr, length, seg description(looks like start addr is only useful when loading, it doesn't not affect the linking process at all)
-    segments = [(),(".data",0x4000,0xc00,"RWP"),(".bss",0x5000,0x1900,"RW")]
     segments = [(".text",0x1000,randint(0x2000,0x3000),"RP")]
     segments.append((".data", round_up(segments[0][1] + segments[0][2], page_align),randint(0xa00,0x1000),"RWP" ))
     segments.append((".bss", round_up(segments[1][1] + segments[1][2], word_align),randint(0x1100,0x2000),"RW" ))
@@ -53,18 +52,40 @@ if __name__ == "__main__":
 
     # symbol table
     for i in range(num_sym_entries):
+        ## generate random name
         word_len = randint(3,5)
         name = ""
         for _ in range(word_len):
             ch = randint(97,122)
             name += chr(ch)
+
+        
         ## this value might fall into the "hole" between different segments
-        value = randint(0x1000,0x6900)
-        ## 0 means undefined, 1-3 means the corresponding segs
-        seg = randint(0,len(segments))
         choice = randint(0,1)
-    type = "U" if choice == 0 else "D"
-    out_file.write("{} {} {} {}\n".format(name,hex(value),seg,type))
+        ## defined or undefined
+        type = "U" if choice == 0 else "D"
+        choice = randint(0,1)
+        ## relative or absolute
+        choice = randint(0,1)
+        if choice == 0:
+            type += "A"
+        else:
+            type += "R"
+        if(type == "UA"):
+            seg_idx = 0
+            value = 0
+        elif(type == "UR"):
+            seg_idx = randint(1,num_segments)
+            value = 0
+        elif(type =="DA"):
+            ## seg_idx == 0 means an absolute or undefined symbol
+            seg_idx = 0
+            ## offset within the whole module
+            value = randint(0,sum([x[2] for x in segments]))
+        elif(type == "DR"):
+            seg_idx = randint(1,num_segments)
+            value = randint(0,segments[seg_idx-1][2])
+        out_file.write("{} {} {} {}\n".format(name,hex(value),seg_idx,type))
 
     # reloc
     unrefereced_sym = set(range(1,num_sym_entries+1))
