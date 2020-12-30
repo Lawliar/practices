@@ -15,24 +15,39 @@ parser.add_argument("-i",required=True, action="append",nargs="+", help='input o
 parser.add_argument('-o',required=True, help='output object file')
 args = parser.parse_args()
 
+# read in input obj files
 input_objs = []
 for input_files in args.i:
     for each_input_file in input_files:
         obj = lb.read(each_input_file)
         input_objs.append(obj)
 
+# relocation
+## calculate sizes for each merged segments
 
-summed_segs = OrderedDict()
-for each_obj in input_objs:
+abs_addr_map = {} ## this map maps absolute address from input obj to output objs to solve abs symbols/relocatables more quickly
+summed_segs = OrderedDict() ## this is the merged segments
+for obj_idx,each_obj in enumerate(input_objs):
+    abs_addr_map[obj_idx] = {}
     for seg_idx,each_seg in enumerate(each_obj.segs):
         seg_name = each_seg.name
+        abs_addr_map[obj_idx][seg_name] = []
         if(seg_name in summed_segs):
             ## calculate summed size
+            prev_seg_sz = summed_segs[seg_name][0] ## this prev_seg_sz has already been word aligned
             summed_segs[seg_name][0] += round_up(each_seg.len,word_align)
-            ## append data(what about the "hole" caused by alignment?)
+
+            abs_addr_map[obj_idx][seg_name] = [prev_seg_sz,prev_seg_sz + each_seg.len]
+
+            ## append data
             summed_segs[seg_name][1] += each_obj.data[seg_idx]
         else:
             summed_segs[seg_name] = [round_up(each_seg.len,word_align), each_obj.data[seg_idx] ]
+
+            ## we didn't consider the base yet, and we ignore the base from the input objs
+            ## so this starts from 0 first(will adjust later)
+            abs_addr_map[obj_idx][seg_name] = [0,each_seg.len]
+
 
 ## calculate base address
 seg_bases = OrderedDict()
@@ -54,6 +69,15 @@ for seg_idx,seg_name in enumerate(seg_names):
         ## page align
         seg_bases[seg_name] = round_up(seg_bases[seg_name],page_align)
 
+## adjust abs_addr_map according to the new base
+for each_obj in abs_addr_map:
+    for each_seg_name in abs_addr_map[each_obj]:
+        new_base = seg_bases[each_seg_name]
+        abs_addr_map[each_obj][each_seg_name][0] += new_base
+        abs_addr_map[each_obj][each_seg_name][1] += new_base
+
+
+# symbol resolution
 
 
 
