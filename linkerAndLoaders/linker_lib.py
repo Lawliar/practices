@@ -1,3 +1,4 @@
+from IPython import embed
 class Seg:
     def __init__(self):
         self.name = ''
@@ -64,8 +65,8 @@ def read(obj_filename):
             sym = Sym()
             sym_seps = lines[cur].strip().split(" ")
             sym.name    = sym_seps[0]
-            sym.val     = int(seg_seps[1],16)
-            sym.seg_idx = int(seg_seps[2],16)
+            sym.val     = int(sym_seps[1],16)
+            sym.seg_idx = int(sym_seps[2])
             sym.type    = sym_seps[3]
             obj.sym_tbl.append(sym)
             cur += 1
@@ -75,7 +76,7 @@ def read(obj_filename):
             relc = Relc()
             relc_seps = lines[cur].strip().split(" ")
             relc.loc     = int(relc_seps[0],16)
-            relc.seg_idx = int(relc_seps[1],16)
+            relc.seg_idx = int(relc_seps[1])
             relc.ref     = int(relc_seps[2],16)
             relc.type    = relc_seps[3]
             obj.relc_tbl.append(relc)

@@ -76,9 +76,21 @@ for each_obj in abs_addr_map:
         abs_addr_map[each_obj][each_seg_name][0] += new_base
         abs_addr_map[each_obj][each_seg_name][1] += new_base
 
+class G_Sym_Prop:
+    def __init__(self):
+        self.value = -1
+        self.seg_idx = -1
+        self.is_abs = False
+        self.is_defined = False
+        self.is_mul_defined = False
+        self.defined_objs = []
 
+global_sym_table = OrderedDict()
 # symbol resolution
-
+## global symbol table
+for obj_idx,each_obj in enumerate(input_objs):
+    for sym_idx, each_sym in enumerate(each_obj.sym_tbl):
+        embed()
 
 
 
@@ -87,7 +99,8 @@ o_obj = lb.Obj()
 
 o_obj.nseg = len(summed_segs)
 ## leave out symbols and relcs for now
-o_obj.nsyms, o_obj.nrels = 0,0
+o_obj.nsyms = 0
+o_obj.nrels = 0
 
 for seg_idx,seg_name in enumerate(seg_names):
     seg = lb.Seg()
