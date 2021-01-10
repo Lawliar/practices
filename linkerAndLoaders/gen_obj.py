@@ -64,7 +64,6 @@ if __name__ == "__main__":
         choice = randint(0,1)
         ## defined or undefined
         type = "U" if choice == 0 else "D"
-        choice = randint(0,1)
         ## relative or absolute
         choice = randint(0,1)
         if choice == 0:

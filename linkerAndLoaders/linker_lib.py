@@ -5,6 +5,11 @@ class Seg:
         self.start_addr = -1
         self.len = -1
         self.desc = ""
+    def __str__(self):
+        return "name:{}\nstart_addr:{}\nlen:{}\ndesc:{}".format(self.name,self.start_addr,self.len,self.desc)
+    def __repr__(self):
+        return "name:{}\nstart_addr:{}\nlen:{}\ndesc:{}".format(self.name,self.start_addr,self.len,self.desc)
+
 class Sym:
     def __init__(self):
         self.name = ''
@@ -12,15 +17,23 @@ class Sym:
         ## 0 for undefined, 1 for the first seg(usually .text)
         self.seg_idx = -1
         self.type = ''
+    def __str__(self):
+        return "name:{}\nval:{}\nseg_idx:{}\ntype:{}".format(self.name,self.val,self.seg_idx,self.type)
+    def __repr__(self):
+        return "name:{}\nval:{}\nseg_idx:{}\ntype:{}".format(self.name,self.val,self.seg_idx,self.type)
+
 class Relc:
     def __init__(self):
         self.loc = -1
         self.seg_idx = -1
-
         #### [-3,-1], means this symbol is a plain relocation item, -1 refers to the 1st segment, e.t.c.,
         ####, [1,num_sym_entries] means this is a symbol and refers to the symbol table
         self.ref = -0x7fff
         self.type = ''
+    def __str__(self):
+        return "loc:{}\nseg_idx:{}\nref:{}\ntype:{}".format(self.loc,self.seg_idx,self.ref,self.type)
+    def __repr__(self):
+        return "loc:{}\nseg_idx:{}\nref:{}\ntype:{}".format(self.loc,self.seg_idx,self.ref,self.type)
 
 class Obj:
     def __init__(self):

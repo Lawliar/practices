@@ -3,6 +3,7 @@ from IPython import embed
 # official package
 import argparse
 from collections import OrderedDict
+import os
 
 # self-developed
 import linker_lib as lb
@@ -83,14 +84,90 @@ class G_Sym_Prop:
         self.is_abs = False
         self.is_defined = False
         self.is_mul_defined = False
-        self.defined_objs = []
+        self.defining_objs = []
+        self.referencing_objs = []
+    def __str__(self):
+        ret = 'val:{}\nseg_idx:{}\nis_abs:{}\nis_defined:{}\nis_mul_defined:{}\n'.format( 
+            self.value,self.seg_idx,self.is_abs,self.is_defined,self.is_mul_defined 
+        ) 
+        ret += "defining objs:"
+        for each_d_obj in self.defining_objs:
+            ret += "  "+str(each_d_obj)+'\n'
+        for each_r_obj in self.referencing_objs:
+            ret += "  "+str(each_r_obj)+'\n'
+        ret += '\n'
+        return ret
+    def __repr__(self):
+        ret = 'val:{}\nseg_idx:{}\nis_abs:{}\nis_defined:{}\nis_mul_defined:{}\n'.format( 
+            self.value,self.seg_idx,self.is_abs,self.is_defined,self.is_mul_defined 
+        ) 
+        ret += "defining objs:"
+        for each_d_obj in self.defining_objs:
+            ret += "  "+str(each_d_obj)+'\n'
+        for each_r_obj in self.referencing_objs:
+            ret += "  "+str(each_r_obj)+'\n'
+        ret += '\n'
+        return ret
 
 global_sym_table = OrderedDict()
 # symbol resolution
 ## global symbol table
 for obj_idx,each_obj in enumerate(input_objs):
     for sym_idx, each_sym in enumerate(each_obj.sym_tbl):
-        embed()
+        sym_name = each_sym.name
+        sym_type = each_sym.type
+        sym_seg = each_sym.seg_idx
+        sym_val = each_sym.val
+        
+        ## check if it's in global symbol table yet
+        if sym_name not in global_sym_table:
+            ## current symbol not in sym table, just create one and continue
+            g_sym_ent = G_Sym_Prop()
+            
+            g_sym_ent.value = sym_val
+            g_sym_ent.seg_idx = sym_seg
+            if("A" in sym_type):
+                g_sym_ent.is_abs = True ## default is false
+            if("D" in sym_type):
+                g_sym_ent.is_defined = True ## default is false
+                g_sym_ent.defining_objs.append((obj_idx,sym_idx))
+            else:
+                g_sym_ent.referencing_objs.append((obj_idx,sym_idx))
+            global_sym_table[sym_name] = g_sym_ent
+            ## is multi_defined is alway false here
+        else:
+            g_sym_ent = global_sym_table[sym_name]
+            ## multi-definition(collision), just remember the collision 
+            if g_sym_ent.is_defined and "D" in sym_type:
+                global_sym_table[sym_name].is_mul_defined = True
+                global_sym_table[sym_name].defining_objs.append((obj_idx,sym_idx))
+                continue
+            elif g_sym_ent.is_defined and "D" not in sym_type:
+                assert("U" in sym_type)
+                global_sym_table[sym_name].referencing_objs.append((obj_idx,sym_idx))
+            elif not g_sym_ent.is_defined and "D" in sym_type:
+                global_sym_table[sym_name].value = sym_val
+                global_sym_table[sym_name].seg_idx = sym_seg
+                if("A" in sym_type):
+                    global_sym_table[sym_name].is_abs = True
+                else:
+                    global_sym_table[sym_name].is_abs = False
+                global_sym_table[sym_name].is_defined = True
+                global_sym_table[sym_name].is_mul_defined = False
+                
+                assert(len(global_sym_table[sym_name].defining_objs) == 0)
+                global_sym_table[sym_name].defining_objs.append((obj_idx,sym_idx))
+
+                assert(len(global_sym_table[sym_name].referencing_objs) > 0)
+            elif not g_sym_ent.is_defined and "D" not in sym_type:
+                global_sym_table[sym_name].referencing_objs.append((obj_idx,sym_idx))
+
+
+embed()
+
+
+
+
 
 
 
