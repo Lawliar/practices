@@ -14,7 +14,8 @@ but didn't generate the file to read/write
 '''
 
 def round_up(num,base):
-    return int(base * round(float(num) / base) )
+    assert(num >= 0 and base >= 0)
+    return -( - num // base) * base
 
 page_align = 0x1000
 text_base = 0x1000

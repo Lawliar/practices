@@ -55,12 +55,13 @@ def relocation(input_objs):
                 ## calculate summed size
                 prev_seg_sz = summed_segs[seg_name][0] ## this prev_seg_sz has already been word aligned
                 summed_segs[seg_name][0] += round_up(each_seg.len,word_align)
-
+                                                              ## here doesn't need to word align
                 abs_addr_map[obj_idx][seg_name] = [prev_seg_sz,prev_seg_sz + each_seg.len]
 
                 ## append data
                 summed_segs[seg_name][1] += each_obj.data[seg_idx]
             else:
+                                        # size and word aligned                ## append data
                 summed_segs[seg_name] = [round_up(each_seg.len,word_align), each_obj.data[seg_idx] ]
 
                 ## we didn't consider the base yet, and we ignore the base from the input objs
@@ -76,11 +77,11 @@ def relocation(input_objs):
             continue
         last_seg_name = seg_names[seg_idx - 1]
         ## the base of last seg plus the size of the last seg
-        last_seg_size = summed_segs[last_seg_name][1]
         last_seg_base = summed_segs[last_seg_name][0]
+        last_seg_size = summed_segs[last_seg_name][1]
         assert(len(summed_segs[seg_name]) == 2)
 
-        summed_segs[seg_name].insert(0,last_seg_base + last_seg_size) 
+        summed_segs[seg_name].insert(0, last_seg_base + last_seg_size) 
         
         ## do the round up
         if seg_name == ".bss":
@@ -94,7 +95,7 @@ def relocation(input_objs):
     ## adjust abs_addr_map according to the new base
     for each_obj in abs_addr_map:
         for each_seg_name in abs_addr_map[each_obj]:
-            new_base = summed_segs[seg_name][0]
+            new_base = summed_segs[each_seg_name][0]
             abs_addr_map[each_obj][each_seg_name][0] += new_base
             abs_addr_map[each_obj][each_seg_name][1] += new_base
 
@@ -103,7 +104,7 @@ def relocation(input_objs):
     ####- value:(seg base, seg size, actual data)
     return abs_addr_map,summed_segs
 
-def symbol_resolving(input_objs):
+def gen_global_symbol_table(input_objs):
     global_sym_table = OrderedDict()
     # symbol resolution
     ## global symbol table
@@ -158,6 +159,8 @@ def symbol_resolving(input_objs):
                     global_sym_table[sym_name].referencing_objs.append((obj_idx,sym_idx))
     return global_sym_table
 
+def global_symbol_resolution():
+    pass
 parser = argparse.ArgumentParser(description='input obj files and output the linked(allocated) output file')
 parser.add_argument("-i",required=True, action="append",nargs="+", help='input object files')
 parser.add_argument('-o',required=True, help='output object file')
@@ -177,7 +180,12 @@ for input_files in args.i:
 abs_addr_map,summed_segments = relocation(input_objs)
 
 ## global symbol resolution
-global_sym_table = symbol_resolving(input_objs)
+global_sym_table = gen_global_symbol_table(input_objs)
+
+print("develop")
+embed()
+
+global_sym_table = global_symbol_resolution()
 
 
 
