@@ -80,8 +80,12 @@ if __name__ == "__main__":
         elif(type =="DA"):
             ## seg_idx == 0 means an absolute or undefined symbol
             seg_idx = 0
+            ## but we still need to know which symbol
+            ## this abs value is referencing to,
+            ## otherwise, the generated value might be in the hole caused by alignment
             ## offset within the whole module
-            value = randint(0,sum([x[2] for x in segments]))
+            which_seg = randint(0,len(segments) - 1)
+            value = randint(segments[which_seg][1],segments[which_seg][1] + segments[which_seg][2])
         elif(type == "DR"):
             seg_idx = randint(1,num_segments)
             value = randint(0,segments[seg_idx-1][2])

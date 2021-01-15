@@ -104,7 +104,7 @@ def relocation(input_objs):
     ####- value:(seg base, seg size, actual data)
     return abs_addr_map,summed_segs
 
-def gen_global_symbol_table(input_objs):
+def sum_up_symbols(input_objs):
     global_sym_table = OrderedDict()
     # symbol resolution
     ## global symbol table
@@ -158,9 +158,38 @@ def gen_global_symbol_table(input_objs):
                 elif not g_sym_ent.is_defined and "D" not in sym_type:
                     global_sym_table[sym_name].referencing_objs.append((obj_idx,sym_idx))
     return global_sym_table
-
-def global_symbol_resolution():
-    pass
+def abs_to_relative(abs_val,input_obj):
+    for each_seg in input_obj.segs:
+        start_addr,len = each_seg.start_addr,each_seg.len
+        if(abs_val >= start_addr and abs_val <= (start_addr + len)):
+            return each_seg.name, abs_val - start_addr
+    print("abs val not in this obj")
+    embed()
+def global_symbol_resolution(abs_addr_map, global_sym_table,input_objs):
+    ## input_obj are just for references
+    for each_global_sym in global_sym_table:
+        if global_sym_table[each_global_sym].is_defined == False or \
+           global_sym_table[each_global_sym].is_mul_defined == True:
+            continue
+        if global_sym_table[each_global_sym].is_abs == True:
+            cur_val = global_sym_table[each_global_sym].value
+            assert(len(global_sym_table[each_global_sym].defining_objs) == 1)
+            defining_obj_idx = global_sym_table[each_global_sym].defining_objs[0][0]
+            
+            old_seg_name, old_seg_off = abs_to_relative(cur_val, input_objs[defining_obj_idx])
+            new_val = abs_addr_map[defining_obj_idx][old_seg_name][0] + old_seg_off
+            assert(new_val <= abs_addr_map[defining_obj_idx][old_seg_name][1])
+            global_sym_table[each_global_sym].value = new_val
+        else:
+            ## because it's not abs, then seg_idx must not be 0
+            assert(global_sym_table[each_global_sym].seg_idx != 0)
+            assert(len(global_sym_table[each_global_sym].defining_objs) == 1)
+            defining_obj_idx = global_sym_table[each_global_sym].defining_objs[0][0]
+            if defining_obj_idx == 1:
+                ## 1st obj's relative address remains unchanged
+                continue
+            ## TODO: generate new relative address
+    return global_sym_table
 parser = argparse.ArgumentParser(description='input obj files and output the linked(allocated) output file')
 parser.add_argument("-i",required=True, action="append",nargs="+", help='input object files')
 parser.add_argument('-o',required=True, help='output object file')
@@ -180,12 +209,10 @@ for input_files in args.i:
 abs_addr_map,summed_segments = relocation(input_objs)
 
 ## global symbol resolution
-global_sym_table = gen_global_symbol_table(input_objs)
+global_sym_table = sum_up_symbols(input_objs)
 
-print("develop")
-embed()
 
-global_sym_table = global_symbol_resolution()
+global_sym_table = global_symbol_resolution(abs_addr_map, global_sym_table,input_objs)
 
 
 
