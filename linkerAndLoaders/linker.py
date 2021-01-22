@@ -47,7 +47,7 @@ def relocation(input_objs):
     abs_addr_map = {} ## this map maps absolute address from input obj to output objs to solve abs symbols/relocatables more quickly
     summed_segs = OrderedDict() ## this is the merged segments
     for obj_idx,each_obj in enumerate(input_objs):
-        abs_addr_map[obj_idx] = {}
+        abs_addr_map[obj_idx] = OrderedDict()
         for seg_idx,each_seg in enumerate(each_obj.segs):
             seg_name = each_seg.name
             abs_addr_map[obj_idx][seg_name] = []
@@ -158,6 +158,7 @@ def sum_up_symbols(input_objs):
                 elif not g_sym_ent.is_defined and "D" not in sym_type:
                     global_sym_table[sym_name].referencing_objs.append((obj_idx,sym_idx))
     return global_sym_table
+
 def abs_to_relative(abs_val,input_obj):
     for each_seg in input_obj.segs:
         start_addr,len = each_seg.start_addr,each_seg.len
@@ -165,11 +166,29 @@ def abs_to_relative(abs_val,input_obj):
             return each_seg.name, abs_val - start_addr
     print("abs val not in this obj")
     embed()
+
+def gen_new_val(cur_val,defining_obj_idx,seg_idx,abs_addr_map):
+    ## input:
+    ###  defining_obj_idx: starts from 0
+    ###  seg_idx: starts from 1 e.g., the seg of .text is 1
+    seg_name = list(abs_addr_map[1].keys())[seg_idx - 1]
+    low,high = abs_addr_map[defining_obj_idx][seg_name]
+    assert((high - low) >= cur_val )
+
+    assert(defining_obj_idx > 0)## because if it's 0, then it doesn't need a new relative addr
+    foremost_low,_ = abs_addr_map[0][seg_name]
+    assert(low  >  foremost_low)
+    return cur_val + low - foremost_low
 def global_symbol_resolution(abs_addr_map, global_sym_table,input_objs):
     ## input_obj are just for references
+    not_defined_syms = OrderedDict()
+    mul_defined_syms = OrderedDict()
     for each_global_sym in global_sym_table:
-        if global_sym_table[each_global_sym].is_defined == False or \
-           global_sym_table[each_global_sym].is_mul_defined == True:
+        if global_sym_table[each_global_sym].is_defined == False:
+            not_defined_syms[each_global_sym] = global_sym_table[each_global_sym]
+            continue
+        if global_sym_table[each_global_sym].is_mul_defined == True:
+            mul_defined_syms[each_global_sym] = global_sym_table[each_global_sym]
             continue
         if global_sym_table[each_global_sym].is_abs == True:
             cur_val = global_sym_table[each_global_sym].value
@@ -182,14 +201,25 @@ def global_symbol_resolution(abs_addr_map, global_sym_table,input_objs):
             global_sym_table[each_global_sym].value = new_val
         else:
             ## because it's not abs, then seg_idx must not be 0
-            assert(global_sym_table[each_global_sym].seg_idx != 0)
+            ## since seg_idx in myobj starts from 1 if the symbol is either undefined or absolute
+            seg_idx = global_sym_table[each_global_sym].seg_idx
+
+            cur_val = global_sym_table[each_global_sym].value
+            assert(seg_idx > 0)
             assert(len(global_sym_table[each_global_sym].defining_objs) == 1)
+            
             defining_obj_idx = global_sym_table[each_global_sym].defining_objs[0][0]
-            if defining_obj_idx == 1:
+            
+            
+            if defining_obj_idx == 0:
                 ## 1st obj's relative address remains unchanged
                 continue
             ## TODO: generate new relative address
-    return global_sym_table
+            new_val = gen_new_val(cur_val,defining_obj_idx,seg_idx,abs_addr_map)
+            global_sym_table[each_global_sym].value = new_val
+    global_sym_table = OrderedDict([ (k,global_sym_table[k]) for k in global_sym_table.keys() \
+        if k not in not_defined_syms.keys() and k not in mul_defined_syms.keys() ])
+    return global_sym_table,not_defined_syms,mul_defined_syms
 parser = argparse.ArgumentParser(description='input obj files and output the linked(allocated) output file')
 parser.add_argument("-i",required=True, action="append",nargs="+", help='input object files')
 parser.add_argument('-o',required=True, help='output object file')
@@ -212,7 +242,7 @@ abs_addr_map,summed_segments = relocation(input_objs)
 global_sym_table = sum_up_symbols(input_objs)
 
 
-global_sym_table = global_symbol_resolution(abs_addr_map, global_sym_table,input_objs)
+global_sym_table,not_defined_sym_table,mul_defined_sym_table = global_symbol_resolution(abs_addr_map, global_sym_table,input_objs)
 
 
 
@@ -221,22 +251,38 @@ global_sym_table = global_symbol_resolution(abs_addr_map, global_sym_table,input
 
 
 
-o_obj = lb.Obj()
+out_obj = lb.Obj()
 
-o_obj.nseg = len(summed_segments)
+out_obj.nseg = len(summed_segments)
 ## leave out symbols and relcs for now
-o_obj.nsyms = 0
-o_obj.nrels = 0
+out_obj.nsyms = len(global_sym_table)
+out_obj.nrels = 0
 
 seg_names = list(summed_segments.keys())
 for seg_idx,seg_name in enumerate(seg_names):
     seg = lb.Seg()
     seg.name = seg_name
     seg.start_addr, seg.len = summed_segments[seg_name][0],summed_segments[seg_name][1]
-    ## just use the first obj
+    ## just use the first obj, since all desc of all segs merged together should be the same
     seg.desc = input_objs[0].segs[seg_idx].desc
-    o_obj.segs.append(seg)
+    out_obj.segs.append(seg)
 
-    o_obj.data.append(summed_segments[seg_name][2])
-
-lb.write(o_obj,args.o)
+    out_obj.data.append(summed_segments[seg_name][2])
+for each_sym in global_sym_table:
+    sym = lb.Sym()
+    sym.name = each_sym
+    sym.val = global_sym_table[each_sym].value
+    sym.seg_idx = global_sym_table[each_sym].seg_idx
+    
+    type = ''
+    if(global_sym_table[each_sym].is_defined):
+        type += 'D'
+    else:
+        type += 'U'
+    if(global_sym_table[each_sym].is_abs):
+        type += 'A'
+    else:
+        type += 'R'
+    sym.type = type
+    out_obj.sym_tbl.append(sym)
+lb.write(out_obj,args.o)
